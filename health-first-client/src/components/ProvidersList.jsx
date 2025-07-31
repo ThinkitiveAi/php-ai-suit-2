@@ -38,11 +38,15 @@ import {
   Star
 } from '@mui/icons-material';
 import ProviderRegistrationDialog from './ProviderRegistrationDialog';
+import ProviderViewDialog from './ProviderViewDialog';
 
 const ProvidersList = () => {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openViewDialog, setOpenViewDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -135,6 +139,22 @@ const ProvidersList = () => {
     });
   };
 
+  const handleEditProvider = (providerData) => {
+    if (selectedProvider) {
+      const updatedProviders = providers.map(provider => 
+        provider.id === selectedProvider.id 
+          ? { ...provider, ...providerData }
+          : provider
+      );
+      setProviders(updatedProviders);
+      setSnackbar({
+        open: true,
+        message: 'Provider updated successfully!',
+        severity: 'success'
+      });
+    }
+  };
+
   const handleDeleteProvider = (id) => {
     setProviders(providers.filter(provider => provider.id !== id));
     setSnackbar({
@@ -142,6 +162,26 @@ const ProvidersList = () => {
       message: 'Provider removed successfully',
       severity: 'success'
     });
+  };
+
+  const handleViewProvider = (provider) => {
+    setSelectedProvider(provider);
+    setOpenViewDialog(true);
+  };
+
+  const handleEditClick = (provider) => {
+    setSelectedProvider(provider);
+    setOpenEditDialog(true);
+  };
+
+  const handleCloseViewDialog = () => {
+    setOpenViewDialog(false);
+    setSelectedProvider(null);
+  };
+
+  const handleCloseEditDialog = () => {
+    setOpenEditDialog(false);
+    setSelectedProvider(null);
   };
 
   const getStatusChip = (status) => {
@@ -533,6 +573,7 @@ const ProvidersList = () => {
                           <IconButton 
                             size="small" 
                             color="primary"
+                            onClick={() => handleViewProvider(provider)}
                             sx={{ 
                               backgroundColor: alpha('#1976d2', 0.1),
                               '&:hover': {
@@ -547,6 +588,7 @@ const ProvidersList = () => {
                           <IconButton 
                             size="small" 
                             color="primary"
+                            onClick={() => handleEditClick(provider)}
                             sx={{ 
                               backgroundColor: alpha('#1976d2', 0.1),
                               '&:hover': {
@@ -619,6 +661,21 @@ const ProvidersList = () => {
           open={openDialog}
           onClose={() => setOpenDialog(false)}
           onSuccess={handleAddProvider}
+        />
+
+        {/* View Dialog */}
+        <ProviderViewDialog
+          open={openViewDialog}
+          onClose={handleCloseViewDialog}
+          provider={selectedProvider}
+        />
+
+        {/* Edit Dialog */}
+        <ProviderRegistrationDialog
+          open={openEditDialog}
+          onClose={handleCloseEditDialog}
+          onSuccess={handleEditProvider}
+          provider={selectedProvider}
         />
 
         {/* Snackbar */}

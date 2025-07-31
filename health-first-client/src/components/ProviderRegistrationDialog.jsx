@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -40,10 +40,11 @@ import {
   Work,
   LocationOn,
   ArrowForward,
-  ArrowBack
+  ArrowBack,
+  Edit
 } from '@mui/icons-material';
 
-// Validation schema
+// Validation schema for registration (with password)
 const registrationSchema = yup.object({
   // Personal Information
   first_name: yup
@@ -119,7 +120,74 @@ const registrationSchema = yup.object({
     .trim()
 }).required();
 
-const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
+// Validation schema for editing (without password)
+const editSchema = yup.object({
+  // Personal Information
+  first_name: yup
+    .string()
+    .required('First name is required')
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name must be less than 50 characters')
+    .trim(),
+  last_name: yup
+    .string()
+    .required('Last name is required')
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name must be less than 50 characters')
+    .trim(),
+  email: yup
+    .string()
+    .required('Email is required')
+    .email('Please enter a valid email address')
+    .trim(),
+  phone_number: yup
+    .string()
+    .required('Phone number is required')
+    .matches(/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number'),
+  
+  // Professional Information
+  specialization: yup
+    .string()
+    .required('Specialization is required')
+    .min(3, 'Specialization must be at least 3 characters')
+    .max(100, 'Specialization must be less than 100 characters')
+    .trim(),
+  license_number: yup
+    .string()
+    .required('License number is required')
+    .matches(/^[A-Za-z0-9]+$/, 'License number must be alphanumeric')
+    .trim(),
+  years_of_experience: yup
+    .number()
+    .required('Years of experience is required')
+    .min(0, 'Years of experience must be at least 0')
+    .max(50, 'Years of experience must be less than 50'),
+  
+  // Clinic Address
+  street: yup
+    .string()
+    .required('Street address is required')
+    .max(200, 'Street address must be less than 200 characters')
+    .trim(),
+  city: yup
+    .string()
+    .required('City is required')
+    .max(100, 'City must be less than 100 characters')
+    .trim(),
+  state: yup
+    .string()
+    .required('State is required')
+    .max(50, 'State must be less than 50 characters')
+    .trim(),
+  zip: yup
+    .string()
+    .required('ZIP code is required')
+    .matches(/^\d{5}(-\d{4})?$/, 'Please enter a valid ZIP code')
+    .trim()
+}).required();
+
+const ProviderRegistrationDialog = ({ open, onClose, onSuccess, provider = null }) => {
+  const isEditMode = !!provider;
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,14 +199,32 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
     formState: { errors, isValid },
     reset,
     watch,
-    trigger
+    trigger,
+    setValue
   } = useForm({
-    resolver: yupResolver(registrationSchema),
+    resolver: yupResolver(isEditMode ? editSchema : registrationSchema),
     mode: 'onChange'
   });
 
   const password = watch('password');
   const confirmPassword = watch('confirm_password');
+
+  // Set form values when editing
+  useEffect(() => {
+    if (provider && isEditMode) {
+      setValue('first_name', provider.first_name);
+      setValue('last_name', provider.last_name);
+      setValue('email', provider.email);
+      setValue('phone_number', provider.phone_number);
+      setValue('specialization', provider.specialization);
+      setValue('license_number', provider.license_number);
+      setValue('years_of_experience', provider.years_of_experience);
+      setValue('street', provider.street);
+      setValue('city', provider.city);
+      setValue('state', provider.state);
+      setValue('zip', provider.zip);
+    }
+  }, [provider, isEditMode, setValue]);
 
   // Password strength indicator
   const getPasswordStrength = (password) => {
@@ -173,14 +259,14 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // In production, replace with actual API call
-      console.log('Registration data:', data);
+      console.log(isEditMode ? 'Update data:' : 'Registration data:', data);
       
       onSuccess(data);
       reset();
       onClose();
       setActiveStep(0);
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error(isEditMode ? 'Update error:' : 'Registration error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -213,7 +299,23 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
     'Other'
   ];
 
-  const steps = [
+  const steps = isEditMode ? [
+    {
+      label: 'Personal Information',
+      icon: <Person />,
+      fields: ['first_name', 'last_name', 'email', 'phone_number']
+    },
+    {
+      label: 'Professional Details',
+      icon: <Work />,
+      fields: ['specialization', 'license_number', 'years_of_experience']
+    },
+    {
+      label: 'Clinic Address',
+      icon: <LocationOn />,
+      fields: ['street', 'city', 'state', 'zip']
+    }
+  ] : [
     {
       label: 'Personal Information',
       icon: <Person />,
@@ -261,10 +363,13 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
       }}>
         <Box>
           <Typography variant="h4" component="h2" sx={{ fontWeight: 700, mb: 1 }}>
-            Provider Registration
+            {isEditMode ? 'Edit Provider' : 'Provider Registration'}
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
-            Complete the registration form to add a new healthcare provider
+            {isEditMode 
+              ? `Update information for ${provider?.first_name} ${provider?.last_name}`
+              : 'Complete the registration form to add a new healthcare provider'
+            }
           </Typography>
         </Box>
         <IconButton 
@@ -379,7 +484,7 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
             </Card>
           )}
 
-          {activeStep === 1 && (
+          {activeStep === 1 && !isEditMode && (
             <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -477,7 +582,7 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
             </Card>
           )}
 
-          {activeStep === 2 && (
+          {(activeStep === 2 && !isEditMode) || (activeStep === 1 && isEditMode) ? (
             <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -539,9 +644,9 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
                 </Grid>
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
-          {activeStep === 3 && (
+          {(activeStep === 3 && !isEditMode) || (activeStep === 2 && isEditMode) ? (
             <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -602,7 +707,7 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
                 </Grid>
               </CardContent>
             </Card>
-          )}
+          ) : null}
         </Box>
       </DialogContent>
 
@@ -661,6 +766,7 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
               variant="contained"
               disabled={!isValid || isSubmitting}
               onClick={handleSubmit(onSubmit)}
+              startIcon={isEditMode ? <Edit /> : undefined}
               sx={{ 
                 borderRadius: 2,
                 px: 4,
@@ -673,7 +779,10 @@ const ProviderRegistrationDialog = ({ open, onClose, onSuccess }) => {
                 }
               }}
             >
-              {isSubmitting ? 'Registering...' : 'Register Provider'}
+              {isSubmitting 
+                ? (isEditMode ? 'Updating...' : 'Registering...') 
+                : (isEditMode ? 'Update Provider' : 'Register Provider')
+              }
             </Button>
           )}
         </Box>
